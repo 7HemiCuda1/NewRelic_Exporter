@@ -1,0 +1,53 @@
+version: '2'
+services:
+  elk:
+    image: sebp/elk
+    ports:
+    - "5601:5601"
+    - "9200:9200"
+    - "5044:5044"
+    volumes:
+    - /Users/jwells/PycharmProjects/NewRelic_Exporter/static/logstash/:/usr/share/logstash/config/
+    - /Users/jwells/PycharmProjects/NewRelic_Exporter/Data/:/data/
+    - /Volumes/it-dept/QA/NewRelic-ExportData:/downloaded_data/
+
+#  filebeat:
+#    image: elastic/filebeat
+#    - user: root
+#    - name: filebeat
+#    - strict.perms: false
+#    - output.elasticsearch.hosts: ["https://10.60.198.164:9200"]
+#
+#    volumes:
+#      - /Users/jwells/PycharmProjects/NewRelic_Exporter/Data/:/data
+
+
+#  frontend:
+#    build:
+#      context: static/.
+#    ports:
+#      - "${EXTERNAL_ADDRESS}:80"
+#    links:
+#      - api
+#    image: tbd:template
+
+#  api:
+#    build:
+#      context: .
+#    expose:
+#    - "5000"
+#    links:
+#    - mybd
+#    depends_on:
+#    - mydb
+#    image: template-api
+#    restart: on-failure
+
+#  mydb:
+#    image: postgres
+#    restart: on-failure
+#    environment:
+#      POSTGRES_PASSWORD: example
+#      POSTGRES_DB: postgres
+
+
