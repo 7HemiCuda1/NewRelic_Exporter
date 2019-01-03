@@ -1,8 +1,8 @@
-Flask==0.12.2
+Flask==1.0.2
 Flask-WTF==0.14.2
 Flask-SQLAlchemy==2.1
 openpyxl==2.4.8
-requests==2.18.1
+requests==2.21.0
 WTForms==2.1
 XlsxWriter==1.0.2
 psycopg2==2.7.3
