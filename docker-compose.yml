@@ -7,8 +7,8 @@ services:
     - "9200:9200"
     - "5044:5044"
     volumes:
-    - /Users/jwells/PycharmProjects/NewRelic_Exporter/static/logstash/:/usr/share/logstash/config/
-    - /Users/jwells/PycharmProjects/NewRelic_Exporter/Data/:/data/
+    #- /Users/jwells/PycharmProjects/NewRelic_Exporter/static/logstash/:/usr/share/logstash/config/
+    #- /Users/jwells/PycharmProjects/NewRelic_Exporter/Data/:/data/
     - /Volumes/it-dept/QA/NewRelic-ExportData:/downloaded_data/
 
 #  filebeat:

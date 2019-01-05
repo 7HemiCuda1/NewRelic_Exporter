@@ -13,11 +13,15 @@ appRoot = save_location
 
 # pass Date and app from user form.
 query = Query.Query()
-livetimeframe = datetime.datetime.utcnow()
-starttime = datetime.datetime.utcnow() - datetime.timedelta(seconds=15)
-# query.setStartDate(datetime.datetime(2018, 11, 22, 23, 00, 00))
-# query.setEndDate(datetime.datetime(2018, 11, 22, 23, 00, 1))
-query.setStartDate(starttime)
-query.setEndDate(livetimeframe)
+#livetimeframe = datetime.datetime.utcnow() + datetime.timedelta(seconds=25200)
+#starttime = datetime.datetime.utcnow() - datetime.timedelta(seconds=3600) + datetime.timedelta(seconds=25200)
+
+#query.setStartDate(starttime)
+#query.setEndDate(livetimeframe)
+
+# Add the start time and end time in MST,
+query.setStartDate(datetime.datetime(2019, 1, 4, 14, 00, 00) + datetime.timedelta(seconds=25200))
+query.setEndDate(datetime.datetime(2019, 1, 4, 14, 10, 00)+ datetime.timedelta(seconds=25200))
+print("Starting process with this date range, Start: {} EndTime: {}".format(str(query.startDate), str(query.endDate)))
 newrelic.collectDataforTest(query, appRoot)
 print("Completed getting Data for the following date range {} to {}".format(query.startDate, query.endDate))

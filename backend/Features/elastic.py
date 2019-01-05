@@ -56,21 +56,21 @@ def process_transactions(events, index):
             listOfKeys.append(key)
         for key in eventItems:
             if key == 'timestamp':
-                t = datetime.datetime.fromtimestamp(float(event[key]) / 1000.)
+                t = datetime.datetime.fromtimestamp(float(event[key]) / 1000.) + datetime.timedelta(seconds=25200)
                 event[key] = t.isoformat()
 
             if key not in config.BaseConfig.keysToIgnore:
                 body.update({key: event[key]})
-        # TODO: this is test code.
-        # for i in body:
-        # if i in ['tripId']:
-        # print(i +": " + str(body[i]))
 
         if not es.indices.exists(index):
             # TODO: This index is temporary
             es.indices.create(index, ignore=400, body=config.BaseConfig.elasticSearchMapping)
 
-        es.index(index=index, doc_type='doc', id=event['tripId'], body=body)
+        try:
+            es.index(index=index, doc_type='doc', id=event['tripId'], body=body)
+        except KeyError as e:
+            es.index(index=index, doc_type='doc', id=event['appId'], body=body)
+            print("There was an error with this Key {} on adding this index : {} ".format(e, body))
         cnt = cnt + 1
 
 
