@@ -2,26 +2,42 @@
 
 # app = app
 from backend.Features import newrelic
-from backend.Classes import Query
+from backend.HelperFunctions.Common import Metrics
 import datetime
+import asyncio
+import aiohttp
 
-save_location = '/Volumes/it-dept/QA/NewRelic-ExportData'
-# cur_file = os.path.realpath(__file__)
-# appRoot = cur_file
-# appRoot = getRoot(appRoot) #temp test
-appRoot = save_location
 
-# pass Date and app from user form.
-query = Query.Query()
-#livetimeframe = datetime.datetime.utcnow() + datetime.timedelta(seconds=25200)
-#starttime = datetime.datetime.utcnow() - datetime.timedelta(seconds=3600) + datetime.timedelta(seconds=25200)
+async def main(log, client):
+    tasks = []
+    #enddate = datetime.datetime.utcnow() - datetime.timedelta(seconds=300)
+    #startdate = enddate - datetime.timedelta(seconds=60)
+    # To Add the start time and end time Manually you must enter it in MST,
+    startdate = datetime.datetime(2019, 1, 21, 8, 36, 00) + datetime.timedelta(seconds=25200)
+    enddate = datetime.datetime(2019, 1, 21, 8, 37, 00) + datetime.timedelta(seconds=25200)
 
-#query.setStartDate(starttime)
-#query.setEndDate(livetimeframe)
+    print("Starting process with this date range, Start: {} EndTime: {}".format(str(startdate), str(enddate)))
 
-# Add the start time and end time in MST,
-query.setStartDate(datetime.datetime(2019, 1, 4, 14, 00, 00) + datetime.timedelta(seconds=25200))
-query.setEndDate(datetime.datetime(2019, 1, 4, 14, 10, 00)+ datetime.timedelta(seconds=25200))
-print("Starting process with this date range, Start: {} EndTime: {}".format(str(query.startDate), str(query.endDate)))
-newrelic.collectDataforTest(query, appRoot)
-print("Completed getting Data for the following date range {} to {}".format(query.startDate, query.endDate))
+    # Add references to methods here
+    # tasks.append(asyncio.ensure_future(newrelic.collectProcessInfoForApps(startdate, enddate, client, log)))
+    tasks.append(asyncio.ensure_future(newrelic.collectTransactionsForApps(startdate, enddate, client, log)))
+    # tasks.append(asyncio.ensure_future(newrelic.collectTransactionErrorsForApps(startdate, enddate, client, log)))
+    # tasks.append(asyncio.ensure_future(newrelic.collectProcessInfoForMicroservices(startdate, enddate, client, log)))
+# TODO: Need to create a ID to add to the logs so i knwo what async thread i am looking at.
+    #print(datetime.datetime.now().strftime('%H:%M.%S') + " Sleeping 60 sec")
+    #time.sleep(60)
+    #print(datetime.datetime.now().strftime('%H:%M.%S') + " Waking up")
+
+    await asyncio.gather(*tasks)
+
+print(datetime.datetime.now().strftime('%H:%M.%S') + " Starting")
+loop = asyncio.get_event_loop()
+client = aiohttp.ClientSession(loop=loop)
+log = Metrics()
+
+loop.run_until_complete(main(log, client))
+
+client.close()
+loop.close()
+#print("Total = " +log.get_newrelic_requestCount())
+print(datetime.datetime.now().strftime('%H:%M.%S') + " stopping")

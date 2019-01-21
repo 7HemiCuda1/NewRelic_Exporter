@@ -8,7 +8,7 @@ import datetime
 import pytz
 
 cur_file = os.path.realpath(__file__)
-appRoot = Common.getRoot(cur_file)
+appRoot = Common.Common.getRoot(cur_file)
 
 dataDir = (os.sep).join([appRoot, "Data"])
 
@@ -34,7 +34,7 @@ def get_json_from_file(dir):
     return data
 
 
-def process_transactions(events, index):
+def process_transactions(events, index, type, log):
     """
     adds each event given in data to the elastic search cluster.
 
@@ -67,40 +67,24 @@ def process_transactions(events, index):
             es.indices.create(index, ignore=400, body=config.BaseConfig.elasticSearchMapping)
 
         try:
-            es.index(index=index, doc_type='doc', id=event['tripId'], body=body)
+            es.index(index=index, doc_type='doc', id=event[config.BaseConfig.elasticSearchIndex[type]["elastic-id"]], body=body)
+            print("- Added - {event} {type} events to Elastic Search! ".format(event=str(len(events)), type=type))
+            log.increment_newrelic_requestCount(len(events))
         except KeyError as e:
-            es.index(index=index, doc_type='doc', id=event['appId'], body=body)
-            print("There was an error with this Key {} on adding this index : {} ".format(e, body))
+            try:
+                es.index(index=index, doc_type='doc', id=event['appId'], body=body)
+                log.increment_newrelic_requestCount(len(events))
+                print("***** Error ***** There was an error with this Key {} on adding this index : {} ".format(e, body))
+            except KeyError as f:
+                print("**** Need to look at the event to find a valid unique ID. this is the error. " + str(f) )
         cnt = cnt + 1
 
 
-def get_events_from_json(data):
-    """
-    Takes the data from the json files and extracts the events.
-    :param data: data that may contain events from new relic
-    :return events: parsed json events
-    """
-    events = {}
-    if len(data) > 3:
-        print("Need to look at the data returning from New Relic. there are more than 3 nested dict lists")
-    elif len(data) > 2:
-        events = data["results"][0]["events"]
-        if len(events) < 1:
-            print("There are no events")
-    elif len(data) > 1:
-        print("Need to look at the data returning from New Relic. there are more than 3 nested dict lists")
-    elif len(data) > 0:
-        events = data[0]["results"][0]["events"]
-        if len(events) < 1:
-            print("There are no events")
-    return events
-
-
-if __name__ == "__main__":
+#if __name__ == "__main__":
     # get json from files
-    data = get_json_from_file(dataDir)
+    #data = get_json_from_file(dataDir)
 
     # TODO: parse json for just the events.
-    events = get_events_from_json(data)
-    print("got events")
-    process_transactions(events)
+    #events = Common.Common.get_events_from_json(data)
+    #print("got events")
+    #process_transactions(events)

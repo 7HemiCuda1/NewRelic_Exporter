@@ -8,3 +8,4 @@ XlsxWriter==1.0.2
 psycopg2==2.7.3
 pytz==2018.7
 elasticsearch==6.3.1
+aiohttp==3.5.1

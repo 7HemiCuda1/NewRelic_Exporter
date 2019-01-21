@@ -1,27 +1,51 @@
 import os
 
+class Common:
 
-def get_parent(path):
-    """(str) -> str)
-    Returns the parent folder of path path.
+    def get_parent(path):
+        """(str) -> str)
+        Returns the parent folder of path path.
 
-    :param path: the path we want to find the parent of
+        :param path: the path we want to find the parent of
 
-    :return: the parent folder of path
-    """
-    return os.path.dirname(path)
+        :return: the parent folder of path
+        """
+        return os.path.dirname(path)
 
 
-def getRoot(appRoot):
-    """
-    gets the root based on the number of directories to move up.
-    :param appRoot:
-    :return: appRoot:
-    """
-    for i in range(3):
-        appRoot = get_parent(appRoot)
+    def getRoot(appRoot):
+        """
+        gets the root based on the number of directories to move up.
+        :param appRoot:
+        :return: appRoot:
+        """
+        for i in range(3):
+            appRoot = Common.get_parent(appRoot)
 
-    return appRoot
+        return appRoot
+
+    def get_events_from_json(data):
+        """
+        Takes the data from the json files and extracts the events.
+        :param data: data that may contain events from new relic
+        :return events: parsed json events
+        """
+        events = {}
+        if len(data) > 3:
+            print("Need to look at the data returning from New Relic. there are more than 3 nested dict lists")
+            print("Data = \n" + str(events))
+        elif len(data) > 2:
+            events = data["results"][0]["events"]
+            if len(events) < 1:
+                print("There are no events, Here is the Data " + str(data))
+        elif len(data) > 1:
+            print("- INFO - Need to look at the data returning from New Relic. there are more than 3 nested dict lists")
+            print("Data = \n" + str(events))
+        elif len(data) > 0:
+            events = data[0]["results"][0]["events"]
+            if len(events) < 1:
+                print("- INFO - There are no events, Here is the Data " + str(data))
+        return events
 
 
 class Metrics:

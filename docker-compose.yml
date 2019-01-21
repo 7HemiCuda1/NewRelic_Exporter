@@ -10,6 +10,7 @@ services:
     #- /Users/jwells/PycharmProjects/NewRelic_Exporter/static/logstash/:/usr/share/logstash/config/
     #- /Users/jwells/PycharmProjects/NewRelic_Exporter/Data/:/data/
     - /Volumes/it-dept/QA/NewRelic-ExportData:/downloaded_data/
+    - /Volumes/it-dept/QA/NewRelic-ExportData:/var/backups/test/
 
 #  filebeat:
 #    image: elastic/filebeat
