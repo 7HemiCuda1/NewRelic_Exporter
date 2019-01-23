@@ -1,6 +1,10 @@
 import os
+import sys
+import logging
+
 
 class Common:
+
 
     def get_parent(path):
         """(str) -> str)
@@ -28,24 +32,44 @@ class Common:
         """
         Takes the data from the json files and extracts the events.
         :param data: data that may contain events from new relic
-        :return events: parsed json events
+        :return events: list of parsed json events
         """
+        logger = Common.setup_custom_logger("common")
+        # try:
+        #     events = data["requests"][0]["events"]
+        # except Exception as e:
+        #     print("This is not a New Relic Result" + e)
         events = {}
         if len(data) > 3:
-            print("Need to look at the data returning from New Relic. there are more than 3 nested dict lists")
-            print("Data = \n" + str(events))
+            logger.info("Common - get_events_from_data - Data > 3: Need to look at the data returning from New Relic. "
+                  "there are more than 3 nested dict lists")
+            logger.info("Data = \n" + str(events))
         elif len(data) > 2:
             events = data["results"][0]["events"]
             if len(events) < 1:
-                print("There are no events, Here is the Data " + str(data))
+                logger.info("Common - get_events_from_data - events > 2: There are no events, Here is the Data " + str(data))
         elif len(data) > 1:
-            print("- INFO - Need to look at the data returning from New Relic. there are more than 3 nested dict lists")
-            print("Data = \n" + str(events))
+            logger.info("- INFO - Need to look at the data returning from New Relic. there are more than 3 nested dict lists")
+            logger.info("Data = \n" + str(events))
         elif len(data) > 0:
             events = data[0]["results"][0]["events"]
             if len(events) < 1:
-                print("- INFO - There are no events, Here is the Data " + str(data))
+                logger.info("- INFO - There are no events, Here is the Data " + str(data))
         return events
+
+
+    def setup_custom_logger(name):
+        formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
+                                      datefmt='%Y-%m-%d %H:%M:%S')
+        handler = logging.FileHandler('log.txt', mode='w')
+        handler.setFormatter(formatter)
+        screen_handler = logging.StreamHandler(stream=sys.stdout)
+        screen_handler.setFormatter(formatter)
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(handler)
+        logger.addHandler(screen_handler)
+        return logger
 
 
 class Metrics:
