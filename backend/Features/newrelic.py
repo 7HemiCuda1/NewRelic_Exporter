@@ -8,15 +8,40 @@ from backend.Classes import Query, NewRelicResults
 from backend.HelperFunctions import Common
 
 timezone = pytz.timezone('US/Mountain')
-logger = Common.Common.setup_custom_logger('myapp')
+logger = Common.Common.setup_custom_logger('newrelic')
 
-async def newRelicRequest(url, querystring, headers, client):
-    # TODO: Add try for errors.
-    #
-    # print("- Request - " + str(query.url) + " *** \n" + str(query.querystring) + " ****  \n" + str(query.headers))
-    async with client.get(url, params=querystring, headers=headers) as response:
-        assert response.status == 200
-        return await response.text()
+async def newRelicRequest(querystring, client):
+    rlog = Common.Common.setup_custom_logger("resuests")
+    try:
+        # Get url and header info.
+        header = config.BaseConfig.headers
+        url = config.BaseConfig.url
+    except Exception as ex:
+        logger.exception("Exception getting data from config file. ")
+    try:
+        async with client.get(url, params=querystring, headers=header) as response:
+            rlog.error("query string = " + querystring + "\nResponse = " + response.status
+                       + " And Reason = " + response.reason)
+            if response.status != 200:
+                logger.debug("Try again, didnt get a 200 with this request. {} reason was {}".format(querystring, response.reason))
+                #await newRelicRequest(querystring, client)
+                return await response.text()
+            else:
+                return await response.text()
+    except AssertionError as e:
+        logger.exception("Could not get data from New Relic. Response code was not 200. got code {} and reason "
+                         "{} with this exception {}".format(response.status, response.reason,  e))
+        res = "failure reason " + str(response.reason) + " status is " + str(response.status)
+        rlog.exception("Could not get data from New Relic. Response code was not 200. got code {} and reason "
+                         "{} with this exception {}".format(response.status, response.reason,  e))
+        return res
+    except Exception as ex:
+        logger.exception("Could not get data from New Relic. Response code was not 200. got code {} and reason "
+                         "{} with this exception {}".format(response.status, response.reason,  ex))
+        res = "failure reason " + str(response.reason) + " status is " + str(response.status)
+        rlog.exception("Could not get data from New Relic. Response code was not 200. got code {} and reason "
+                         "{} with this exception {}".format(response.status, response.reason,  ex))
+        return res
 
 
 def getNumOfEventsFromData(data):
@@ -37,15 +62,14 @@ def getNumOfEventsFromData(data):
     return num_of_events
 
 
-async def get_number_rows_from_new_relic(nrqlQuery, query, client, thread_id):
-    querystring = {
-        "nrql": nrqlQuery}
+async def get_number_rows_from_new_relic(nrqlQuery, query, thread_id, client):
+    querystring = {"nrql": nrqlQuery}
     return_value = 0
-    query.setQueryString(querystring)
-    temp_results = json.loads(await newRelicRequest(query.url,querystring, query.headers, client))
+
+    temp_results = json.loads(await newRelicRequest(querystring, client))
     try:
         return_value = temp_results["results"][0]["count"]
-        logger.debug("{} - INFO - # of rows from new relic is {} ".format(thread_id, str(return_value)))
+        logger.debug("{} - debug - # of rows from new relic is {} ".format(thread_id, str(return_value)))
     except Exception as e:
         logger.error("{} - ERROR - Exception caught when trying to ge the number of "
               "rows returned from New Relic\n{}".format(thread_id, str(e)))
@@ -53,15 +77,14 @@ async def get_number_rows_from_new_relic(nrqlQuery, query, client, thread_id):
     return return_value
 
 
-async def get_number_members_from_new_relic(nrqlQuery, query, client, thread_id):
-    querystring = {
-        "nrql": nrqlQuery}
+async def get_number_members_from_new_relic(nrqlQuery, query, thread_id, client):
+    querystring = {"nrql": nrqlQuery}
     return_value = 0
     query.setQueryString(querystring)
-    temp_results = json.loads(await newRelicRequest(query.url,querystring, query.headers, client))
+    temp_results = json.loads(await newRelicRequest(querystring, client))
     try:
         return_value = temp_results["results"][0]["count"]
-        # TODO: breakpoint added to ensure we are capturing the members correctly
+
         logger.debug("{} - INFO - # of members is {} ".format(thread_id, str(return_value)))
     except Exception as e:
         logger.error("{} Exception caught when trying to ge the number of rows returned from New Relic " .format(thread_id, str(e)))
@@ -69,58 +92,47 @@ async def get_number_members_from_new_relic(nrqlQuery, query, client, thread_id)
     return return_value
 
 
-async def collectTransactionsForApps(startdate, enddate, client, log, thread_id):
-    query = Query.Query()
-    query.setStartDate(startdate)
-    query.setEndDate(enddate)
-    logger.info("{} starting transaction".format(thread_id))
+async def collectTransactionsForApps(startdate, enddate, log, thread_id, client):
+    logger.info("*" * 80)
+    logger.info("{} starting transactions for apps".format(thread_id))
     for appname in config.BaseConfig.NewRelicApps["apps"]:
-        #print("- START -  processing " + str(appname))
-        data = await getAppTransactions(startdate, enddate, appname, client, "transactions", log, thread_id)
-        # TODO: Add logging method
-        #print("- END - (" + appname + " Transactions DONE!!!)" + str(log.get_newrelic_requestCount()))
+        data = await getAppTransactions(startdate, enddate, appname, "transactions", log, thread_id, client)
         writeJSONFile(data, appname + "-transactions", thread_id)
 
 
-async def collectTransactionErrorsForApps(startdate, enddate, client, log, thread_id):
-    query = Query.Query()
-    query.setStartDate(startdate)
-    query.setEndDate(enddate)
-    logger.info("{} starting transaction errors".format(thread_id))
+async def collectTransactionErrorsForApps(startdate, enddate, log, thread_id, client):
+    logger.info("*" * 80)
+    logger.info("{} starting transaction errors for apps".format(thread_id))
+
     for appname in config.BaseConfig.NewRelicApps["apps"]:
-        #print("- START -  processing " + str(appname))
-        data = await getAppTransactions(startdate, enddate, appname, client, "transaction-error", log, thread_id)
-        # TODO: Add logging method
-        #print("- END - (" + appname + " Transactions DONE!!!) " + str(log.get_newrelic_requestCount()))
+        data = await getAppTransactions(startdate, enddate, appname, "transaction-error", log, thread_id, client)
         writeJSONFile(data, appname + "-transactions-errors",thread_id)
 
 
-async def collectProcessInfoForApps(startdate, enddate, client, log, thread_id):
-    query = Query.Query()
-    query.setStartDate(startdate)
-    query.setEndDate(enddate)
-    logger.info("{} starting Processes for apps".format(thread_id))
+async def collectHostInfoForApps(startdate, enddate, log, thread_id, client):
+    logger.info("*" * 80)
+    logger.info("{} starting host for apps".format(thread_id))
     for appname in config.BaseConfig.SystemSampleApps["apps"]:
-        #print("- START -  processing " + str(appname))
-        data = await getAppTransactions(startdate, enddate, appname, client, "host", log, thread_id)
-        # TODO: Add logging method
-        #print("- END - (" + appname + " App process Errors DONE!!!) added - " + str(log.get_newrelic_requestCount()))
+        data = await getAppTransactions(startdate, enddate, appname, "host", log, thread_id, client)
         writeJSONFile(data, appname + "-processinfo-errors-microservices", thread_id)
 
 
-async def collectProcessInfoForMicroservices(startdate, enddate, client, log, thread_id):
-    query = Query.Query()
-    query.setStartDate(startdate)
-    query.setEndDate(enddate)
+async def collectProcessInfoForMicroservices(startdate, enddate, log, thread_id, client):
+    logger.info("*" * 80)
     logger.info("{} starting Processes for microservices".format(thread_id))
     for appname in config.BaseConfig.NewRelicMicroservices["services"]:
-        #print("- START -  processing " + str(appname))
-        data = await getAppTransactions(startdate, enddate, appname, client, "process", log, thread_id)
-        # TODO: Add logging method
-        #print("- END - (" + appname + " Microservice process Errors DONE!!!)" + str(log.get_newrelic_requestCount()))
+        data = await getAppTransactions(startdate, enddate, appname, "process-micro", log, thread_id, client)
         writeJSONFile(data, appname + "-processinfo-microservices", thread_id)
     # end for
 
+
+async def collectProcessInfoForApps(startdate, enddate, log, thread_id, client):
+    logger.info("*" * 80)
+    logger.info("{} starting Processes for Apps".format(thread_id))
+    for appname in config.BaseConfig.ProcessSampleApp["apps"]:
+        data = await getAppTransactions(startdate, enddate, appname, "process-app", log, thread_id, client)
+        writeJSONFile(data, appname + "-processinfo-apps", thread_id)
+    # end for
 
 
 def writeJSONFile(data, appname, thread_id):
@@ -139,8 +151,6 @@ def writeJSONFile(data, appname, thread_id):
         try:
             with open(fullpath, "w") as fout:
                 json.dump(data, fout)
-                # json.dump(data, fout, indent=4, sort_keys=True)
-                # TODO: Need logging here
                 logger.info("{} Saving File here: {}".format(thread_id, fullpath))
             # end with
         except FileNotFoundError as e:
@@ -186,12 +196,12 @@ async def no_member_transaction_processing(loop_start_date,
                                            loop_end_date,
                                            json_results,
                                            s,
+                                           event_history,
                                            appname,
                                            my_query,
-                                           client,
                                            log,
-                                           thread_id):
-
+                                           thread_id,
+                                           client):
     # Build the Query and request.
     f = config.BaseConfig.elasticSearchIndex[type]["nrqlQueryFrom"]
     w = config.BaseConfig.elasticSearchIndex[type]["nrqlQueryWhere"]
@@ -199,7 +209,7 @@ async def no_member_transaction_processing(loop_start_date,
     # Get number of results for no Member
     nrqlNoMemberQuery = "SELECT {select} FROM {f} SINCE '{startDate}'" \
                         " until '{endDate}' where {where} " \
-                        "LIKE '%{appname}%' {postwhere}".format(select="count(*)",
+                        "= '{appname}' {postwhere}".format(select="count(*)",
                                                                 f=f,
                                                                 startDate=loop_start_date,
                                                                 endDate=loop_end_date,
@@ -210,7 +220,7 @@ async def no_member_transaction_processing(loop_start_date,
     querystring = {"nrql": nrqlNoMemberQuery}
     my_query.setQueryString(querystring)
     # Get the number of events that come back for events that have no Member ID.
-    data_for_no_member = json.loads(await newRelicRequest(my_query.url, querystring, my_query.headers, client))
+    data_for_no_member = json.loads(await newRelicRequest(querystring, client))
     num_of_no_member_events = data_for_no_member["results"][0]["count"]
     logger.debug("{} Number of events for no Member Ids. {}".format(thread_id, str(num_of_no_member_events)))
 
@@ -221,7 +231,7 @@ async def no_member_transaction_processing(loop_start_date,
         # Gets a list of hosts to use later to narrow query
         nrqlNoMemberHostQuery = "SELECT {select} FROM {f} SINCE '{startDate}'" \
                                 " until '{endDate}' where {where} " \
-                                "LIKE '%{appname}%' {postwhere}".format(select="uniques(host)",
+                                "= '{appname}' {postwhere}".format(select="uniques(host)",
                                                                         f=f,
                                                                         startDate=loop_start_date,
                                                                         endDate=loop_end_date,
@@ -232,16 +242,16 @@ async def no_member_transaction_processing(loop_start_date,
         querystring = {"nrql": nrqlNoMemberHostQuery}
         my_query.setQueryString(querystring)
         data_for_no_member_hosts = json.loads(
-            await newRelicRequest(my_query.url, querystring, my_query.headers, client))
+            await newRelicRequest(querystring, client))
         hosts = data_for_no_member_hosts["results"][0]["members"]
-        logger.debug("{} - INFO - There are {} different hosts to pull data for.".format(thread_id, len(hosts)))
+        logger.debug("{} - DEBUG - There are {} different hosts to pull data for.".format(thread_id, len(hosts)))
 
         for (i, host) in enumerate(hosts):
             # Gets the data for each host to import into Elastic Search
             pw = "and error IS NULL and MemberId IS NULL and host = '{}'".format(host)
             nrqlNoMemberIndividualHostQuery = "SELECT {select} FROM {f} SINCE '{startDate}'" \
                                               " until '{endDate}' where {where} " \
-                                              "LIKE '%{appname}%' {postwhere}".format(select="*",
+                                              "= '{appname}' {postwhere}".format(select="*",
                                                                                       f=f,
                                                                                       startDate=loop_start_date,
                                                                                       endDate=loop_end_date,
@@ -251,20 +261,23 @@ async def no_member_transaction_processing(loop_start_date,
                                                                                       )
             querystring = {"nrql": nrqlNoMemberIndividualHostQuery}
             my_query.setQueryString(querystring)
-            data_on_hosts = json.loads(await newRelicRequest(my_query.url, querystring, my_query.headers, client))
+            data_on_hosts = json.loads(await newRelicRequest(querystring, client))
             host_events = Common.Common.get_events_from_json(data_on_hosts)
             # print("{} got {} host events for host {}".format(thread_id, str(len(host_events)), host))
 
             if len(host_events) > 0:
                 elastic.process_transactions(host_events, index + config.BaseConfig.indexDate, type, log,
                                              thread_id)
+                logger.info("{} - Adding {} no member Host transactions to "
+                      "Elastic Search".format(thread_id, str(len(host_events))))
+                event_history.increment_es__entries(len(host_events))
             else:
-                logger.debug("{} - INFO - No Events added to ElasticSearch for "
+                logger.debug("{} - DEBUG - No Events added to ElasticSearch for "
                       "this host! {}".format(thread_id, host))
 
     elif num_of_no_member_events > 0:
         nrqlQueryNoMember = "SELECT {select} FROM {f} SINCE '{startDate}' " \
-                            "until '{endDate}' where {where} LIKE '%{appname}%' " \
+                            "until '{endDate}' where {where} = '{appname}' " \
                             "{postwhere}".format(select="*",
                                                  f=f,
                                                  startDate=loop_start_date,
@@ -275,23 +288,24 @@ async def no_member_transaction_processing(loop_start_date,
         querystring = {"nrql": nrqlQueryNoMember}
         my_query.setQueryString(querystring)
         try:
-            no_member_results = json.loads(await newRelicRequest(my_query.url, querystring, my_query.headers, client))
+            no_member_results = json.loads(await newRelicRequest(querystring, client))
             json_results[s] = no_member_results
             no_member_events = Common.Common.get_events_from_json(no_member_results)
-            # print("{} got {} events for hosts!".format(thread_id, str(len(no_member_events))))
 
-            # TODO: Need to check to see if there is too many requests.
             if len(no_member_events) > 100:
                 logger.error("*" * 50)
-                logger.error("{} - CRITICAL - There are missing requests here, filtering No MemberID host, Need further filtering"
-                      "* Request : {} ".format(thread_id, str(nrqlNoMemberQuery)))
+                logger.error("{} - CRITICAL - There are missing requests here, filtering No MemberID host, "
+                             "Need further filtering * Request : {} ".format(thread_id, str(nrqlNoMemberQuery)))
 
             elif len(no_member_events) > 0:
                 elastic.process_transactions(no_member_events, index + config.BaseConfig.indexDate, type, log,
                                              thread_id)
+                logger.info("{} - Adding {} no member transactions to "
+                            "Elastic Search".format(thread_id, str(len(no_member_events))))
+                event_history.increment_es__entries(len(no_member_events))
             else:
-                logger.debug("{} - INFO - No Events added to ElasticSearch for "
-                      "this member! {}".format(thread_id, str(no_member_events)))
+                logger.debug("{} - DEBUG - No Events added to ElasticSearch for "
+                             "this member! {}".format(thread_id, str(no_member_events)))
 
         except Exception as ex:
             logger.error("*" * 50)
@@ -299,28 +313,39 @@ async def no_member_transaction_processing(loop_start_date,
     # End elif
     return json_results
 
-async def getAppTransactions(start_date, end_date, appname, client, type, log, thread_id):
-    my_query = Query.Query()
+
+async def getAppTransactions(start_date, end_date, appname, type, log, thread_id, client):
+    my_query = Query.Query(start_date, end_date)
     json_results = {}
     index = config.BaseConfig.elasticSearchIndex[type]["index-name"]
     # results = NewRelicResults.Results()
 
+    # Testing a better loop
+    delta = abs(end_date - start_date).seconds
+    #print(delta)
     # Get data loop (change the start date and end date by 1 min. then check that the data is different.)
     loop_start_date = start_date + datetime.timedelta(seconds=-1)
     loop_end_date = start_date
-    previousEvents = {} # TODO: Do i need this
-    # create timer
-    total = 0
+    # Count number of events added.
+    event_history = Common.Metrics()
     s = 0
-    while loop_start_date <= end_date:
+    for s in range(delta):
         # create a test stopwatch
+        print("{} Status - >>>>>>Loop # {} of {}".format(thread_id, s+1, delta))
+        if loop_start_date >= end_date:
+            print("*"*10 + "Oh no. Loop broken " + "*"*10)
+            logger.error("*"*10 + "Oh no. Loop broken " + "*"*10)
         start_stopwatch = datetime.datetime.now()
 
         # shift both start date and end date by 1 min.
         loop_start_date = loop_end_date
         loop_end_date = loop_start_date + datetime.timedelta(seconds=1)
-        logger.info("-"*60)
-        logger.info("- INFO - Starting interval {} to {}".format(loop_start_date, loop_end_date))
+        event_history.get_newrelic_request_count()
+        logger.info("{} **** Found {} ****entries".format(thread_id, str(event_history.get_newrelic_request_count())))
+        event_history = Common.Metrics()
+        # logger.info("-"*60)
+        logger.info("{} - INFO - Starting {} for {}"
+                    " interval {} to {}".format(thread_id, type, appname, loop_start_date, loop_end_date))
         # Build the Query and request.
         select = config.BaseConfig.elasticSearchIndex[type]["select"]
         memberselect = config.BaseConfig.elasticSearchIndex[type]["memberIdCheck"]
@@ -329,45 +354,40 @@ async def getAppTransactions(start_date, end_date, appname, client, type, log, t
         pw = config.BaseConfig.elasticSearchIndex[type]["nrqlQueryPostWhere"]
         pwm = config.BaseConfig.elasticSearchIndex[type]["memberIdWhere"]
 
-        # TODO: Get a count of the requests and if it is grater than 100 then we need to find a way to make it smaller.
         # get the number of rows for the next period.
         nrqlQueryRows = "SELECT {select} FROM {f} SINCE '{startDate}' " \
                         "until '{endDate}' where {where} LIKE " \
-                        "'%{appname}%' {postwhere}".format(select="count(*)",
+                        "'%{appname}%'".format(select="count(*)",
                                                            f=f,
                                                            startDate=loop_start_date,
                                                            endDate=loop_end_date,
                                                            appname=appname,
-                                                           where=w,
-                                                           postwhere=pw
+                                                           where=w
                                                            )
-        querystring = {"nrql": nrqlQueryRows}
-        my_query.setQueryString(querystring)
-        #TODO: Removed Try, may need to handle possible error.
-        num_of_rows = (await get_number_rows_from_new_relic(nrqlQueryRows, my_query, client, thread_id))
-        logger.debug("{} Number of rows = {}".format(thread_id, str(num_of_rows)))
+        num_of_rows = (await get_number_rows_from_new_relic(nrqlQueryRows, my_query, thread_id, client))
+        logger.debug("{} Number of rows = {} for this interval"
+                     " {} to {}".format(thread_id, str(num_of_rows),loop_start_date, loop_end_date))
         # Check to see if there are too many rows. else that there are rows vs no rows.
         if num_of_rows > 99:
             logger.debug("*"*50)
-            logger.debug("{} - Warning - To Prevent missing requests here, filtering on MemberID "
-                  "* Request : {} ".format(thread_id, str(nrqlQueryRows)))
+            logger.debug("{} - DEBUG - To Prevent missing requests here, filtering on MemberID "
+                         "* Request : {} ".format(thread_id, str(nrqlQueryRows)))
             # if there are more than 100 then we need to request less. so lets get each memberId's requests.
             try:
                 nrqlMemberIDQuery = "SELECT {select} FROM {f} SINCE '{startDate}' " \
                                     "until '{endDate}' where {where} " \
-                                    "LIKE '%{appname}%' {postwhere}".format(select=memberselect,
+                                    "LIKE '%{appname}%'".format(select=memberselect,
                                                                             f=f,
                                                                             startDate=loop_start_date,
                                                                             endDate=loop_end_date,
                                                                             appname=appname,
-                                                                            where=w,
-                                                                            postwhere=pw
+                                                                            where=w
                                                                             )
                 querystring = {"nrql": nrqlMemberIDQuery}
                 my_query.setQueryString(querystring)
 
                 # Get a list of members to cycle through to limit the amount of rows that comes back from New Relic.
-                data_for_memberids = json.loads(await newRelicRequest(my_query.url,querystring, my_query.headers, client))
+                data_for_memberids = json.loads(await newRelicRequest(querystring, client))
                 number_of_memberids = len(data_for_memberids["results"][0]["members"])
                 logger.debug("{} Number of members = {}".format(thread_id, str(number_of_memberids)))
                 members = data_for_memberids["results"][0]["members"]
@@ -385,10 +405,9 @@ async def getAppTransactions(start_date, end_date, appname, client, type, log, t
 
             else:
                 for memb in members:
-                    # TODO: May need to check the amount of returned results to make sure we dont miss anything.
                     # get the data for each member and add to Elastic Search.
                     nrqlMemberIDQuery = "SELECT {select} FROM {f} SINCE '{startDate}' " \
-                                        "until '{endDate}' where {where} LIKE '%{appname}%' " \
+                                        "until '{endDate}' where {where} = '{appname}' " \
                                         "{postwhere}".format(select=select,
                                                              f=f,
                                                              startDate=loop_start_date,
@@ -400,7 +419,7 @@ async def getAppTransactions(start_date, end_date, appname, client, type, log, t
                     querystring = {"nrql": nrqlMemberIDQuery}
                     my_query.setQueryString(querystring)
                     try:
-                        member_results = json.loads(await newRelicRequest(my_query.url,querystring, my_query.headers, client))
+                        member_results = json.loads(await newRelicRequest(querystring, client))
                         json_results[s] = member_results
                         events_for_member = Common.Common.get_events_from_json(member_results)
                         # print("{} Got {} Events! ".format(thread_id, str(len(events_for_member))))
@@ -412,6 +431,9 @@ async def getAppTransactions(start_date, end_date, appname, client, type, log, t
                                                          log,
                                                          thread_id
                                                          )
+                            logger.info("{} - Adding {} member transactions to "
+                                  "Elastic Search".format(thread_id, str(len(events_for_member))))
+                            event_history.increment_es__entries(len(events_for_member))
                         else:
                             logger.info("*" * 50)
                             logger.info("{} - INFO - No Events added to ElasticSearch "
@@ -423,13 +445,16 @@ async def getAppTransactions(start_date, end_date, appname, client, type, log, t
             # End else
 
             # Process No Member results.
-            json_results = (await no_member_transaction_processing(loop_start_date, index, type, loop_end_date, json_results, s, appname, my_query, client, log, thread_id))
+            json_results = (
+                await no_member_transaction_processing(loop_start_date, index, type, loop_end_date, json_results, s,
+                                                       event_history, appname, my_query, log, thread_id, client))
+
 
             logger.debug("{} Processed NoMember Transactions. ".format(thread_id))
 
         elif num_of_rows > 0:
             nrqlQuery = "SELECT {select} FROM {f} SINCE '{startDate}' until '{endDate}' where {where} " \
-                        "LIKE '%{appname}%' {postwhere}".format(select=select,
+                        "= '{appname}' {postwhere}".format(select=select,
                                                                 f=f,
                                                                 startDate=loop_start_date,
                                                                 endDate=loop_end_date,
@@ -437,34 +462,34 @@ async def getAppTransactions(start_date, end_date, appname, client, type, log, t
                                                                 where=w,
                                                                 postwhere=pw
                                                                 )
-            #TODO: temp message
-            logger.debug("{} - Debug - NRQL Query = {}".format(thread_id, nrqlQuery))
             querystring = {"nrql": nrqlQuery}
             my_query.setQueryString(querystring)
 
             try:
-                temp_results = json.loads(await newRelicRequest(my_query.url,querystring, my_query.headers, client))
+                temp_results = json.loads(await newRelicRequest(querystring, client))
                 json_results[s] = temp_results
             except Exception as e:
                 logger.error("{} There was an Exception getting the number of rows this is an "
                       "async process. {}" .format(thread_id, str(e)))
-
-            # TODO: Set the event to the results object.
             # gets the events from the json results.
             events = Common.Common.get_events_from_json(json_results[s])
             # add the events to the elastic search cluster.
             if len(events) > 0:
                 elastic.process_transactions(events, index + config.BaseConfig.indexDate, type, log, thread_id)
+                logger.info("{} - Adding {} transactions to "
+                      "Elastic Search".format(thread_id, str(len(events))))
+                event_history.increment_es__entries(len(events))
             else:
-                logger.debug("{} -* INFO - No Events added to ElasticSearch for this period!".format(thread_id))
+                logger.debug("{} -* DEBUG - No Events added to ElasticSearch "
+                             "for this period! {} to {}".format(thread_id, loop_start_date, loop_end_date))
         else:
             logger.debug("{} - INFO - No data in this query {}".format(thread_id, nrqlQueryRows))
         s = s + 1  # increment for the jsonResults
         stop_stopwatch = datetime.datetime.now()
-        time = stop_stopwatch - start_stopwatch
-        logger.info("This second started at {} and ended at {}".format(start_stopwatch, stop_stopwatch))
-        total = total + time.total_seconds()
+        #time = stop_stopwatch - start_stopwatch
+        logger.debug("{} The interval Timer started at {} and ended at {}".format(thread_id, start_stopwatch, stop_stopwatch))
+        #total = total + time.total_seconds()
     # End While loop
     # timer
-    logger.info("This applcation took {} seconds to run. ".format(total))
+    #logger.info("This applcation took {} seconds to run. ".format(total.total_seconds()))
     return json_results

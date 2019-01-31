@@ -47,29 +47,34 @@ def process_transactions(events, index, type, log, thread_id):
                               )
 
         try:
-
+            event_key = config.BaseConfig.elasticSearchIndex[type]["elastic-id"]
             es.index(index=index,
                      doc_type='doc',
-                     id=event[config.BaseConfig.elasticSearchIndex[type]["elastic-id"]],
+                     id=event[event_key],
                      body=body
                      )
-            # print("{thread} - Added event number - {event} of {total} of "
-            #       "{type} events to Elastic Search! ".format(thread=thread_id,
-            #                                                  event=i+1,
-            #                                                  total=str(len(events)),
-            #                                                  type=type
-            #                                                  ))
-            log.increment_newrelic_requestCount(len(events))
+            logger.debug("{thread} - Added event number - {event} of {total} of "
+                  "{type} events to Elastic Search! ".format(thread=thread_id,
+                                                             event=i+1,
+                                                             total=str(len(events)),
+                                                             type=type
+                                                             ))
+            log.increment_newrelic_request_count(len(events))
         except KeyError as e:
             try:
                 es.index(index=index,
                          doc_type='doc',
                          id=event['appId'],
                          body=body)
-                log.increment_newrelic_requestCount(len(events))
+                log.increment_newrelic_request_count(len(events))
                 logger.info("{} ***** Error ***** There was an error with this Key {} "
                       "on adding this index : {} ".format(thread_id, e, body))
             except KeyError as f:
-                logger.info("{} **** FATAL ****** Not Added to ES. \nNeed to look at the event to find a valid unique ID. "
+                logger.exception("{} **** FATAL ****** Not Added to ES. \nNeed to look at the event to find a valid unique ID. "
                       "this is the error. {}".format(thread_id, str(f)))
+            except Exception as ex:
+                logger.exception(
+                    "{} **** FATAL ****** Not Added to ES. \nNeed to look at the event to find a valid unique ID. "
+                    "this is the error. {}".format(thread_id, str(ex)))
         cnt = cnt + 1
+

@@ -1,10 +1,10 @@
 import os
 import sys
 import logging
+import datetime
 
 
 class Common:
-
 
     def get_parent(path):
         """(str) -> str)
@@ -16,17 +16,16 @@ class Common:
         """
         return os.path.dirname(path)
 
-
-    def getRoot(appRoot):
+    def getRoot(file):
         """
         gets the root based on the number of directories to move up.
-        :param appRoot:
-        :return: appRoot:
+        :param file:
+        :return: file:
         """
         for i in range(3):
-            appRoot = Common.get_parent(appRoot)
+            file = Common.get_parent(file)
 
-        return appRoot
+        return file
 
     def get_events_from_json(data):
         """
@@ -41,51 +40,64 @@ class Common:
         #     print("This is not a New Relic Result" + e)
         events = {}
         if len(data) > 3:
-            logger.info("Common - get_events_from_data - Data > 3: Need to look at the data returning from New Relic. "
-                  "there are more than 3 nested dict lists")
-            logger.info("Data = \n" + str(events))
+            logger.debug(
+                "Common - get_events_from_data - Data > 3: Need to look at the data returning from New Relic. "
+                "there are more than 3 nested dict lists")
+            logger.debug("Data = \n" + str(events))
         elif len(data) > 2:
-            events = data["results"][0]["events"]
+            try:
+                events = data["results"][0]["events"]
+            except KeyError as k:
+                logger.error("Key Error with this data. {} ".format(data.__str__()))
+                return events
             if len(events) < 1:
-                logger.info("Common - get_events_from_data - events > 2: There are no events, Here is the Data " + str(data))
+                logger.debug(
+                    "Common - get_events_from_data - events > 2: There are no events, Here is the Data " + str(data))
         elif len(data) > 1:
-            logger.info("- INFO - Need to look at the data returning from New Relic. there are more than 3 nested dict lists")
-            logger.info("Data = \n" + str(events))
+            logger.debug(
+                "- INFO - Need to look at the data returning from New Relic. there are more than 3 nested dict lists")
+            logger.debug("Data = \n" + str(events))
         elif len(data) > 0:
             events = data[0]["results"][0]["events"]
             if len(events) < 1:
-                logger.info("- INFO - There are no events, Here is the Data " + str(data))
+                logger.debug("- INFO - There are no events, Here is the Data " + str(data))
         return events
 
-
     def setup_custom_logger(name):
-        formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
+        formatter = logging.Formatter(fmt='%(asctime)s : %(levelname)-8s : %(name)s : %(funcName)s %(message)s',
                                       datefmt='%Y-%m-%d %H:%M:%S')
-        handler = logging.FileHandler('log.txt', mode='w')
-        handler.setFormatter(formatter)
+        stamp = datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%d %H")
+
+        try:
+            file_name = "log-"+ name + stamp + ".log"
+            handler = logging.FileHandler(file_name, mode='w')
+            handler.setFormatter(formatter)
+        except OSError as ose:
+            print("OS Error Logging is broken. " + str(ose))
         screen_handler = logging.StreamHandler(stream=sys.stdout)
         screen_handler.setFormatter(formatter)
         logger = logging.getLogger(name)
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.ERROR)
         logger.addHandler(handler)
         logger.addHandler(screen_handler)
+
         return logger
 
 
 class Metrics:
 
     def __init__(self):
-        self._newrelic_requestCount = 0
-        self._es_Entries = 0
+        self._newrelic_request_count = 0
+        self._es__entries = 0
 
-    def increment_newrelic_requestCount(self, count):
-        self._newrelic_requestCount = self._newrelic_requestCount + count
+    def increment_newrelic_request_count(self, count):
+        self._newrelic_request_count = self._newrelic_request_count + count
 
-    def get_newrelic_requestCount(self):
-        return self._newrelic_requestCount
+    def get_newrelic_request_count(self):
+        return self._newrelic_request_count
 
-    def increment_es_Entries(self, count):
-        self._es_Entries = self._es_Entries + count
+    def increment_es__entries(self, count):
+        self._es__entries = self._es__entries + count
 
-    def get_es_Entries(self):
-        return self._es_Entries
+    def get_es__entries(self):
+        return self._es__entries

@@ -3,7 +3,7 @@ import config
 
 class Query:
 
-    def __init__(self):
+    def __init__(self, start_date, end_date):
         """
         Creates a new Query object with num num, name name and section
 		section.
@@ -15,9 +15,9 @@ class Query:
             'cache-control': "no-cache"
         }
         self.payload = ""
-        self.querystring = None
-        self.startDate = None
-        self.endDate = None
+        self.querystring = ""
+        self.startDate = start_date
+        self.endDate = end_date
 
     def __eq__(self, other):
         """
