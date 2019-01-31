@@ -107,10 +107,11 @@ if __name__ == "__main__":
     log = Metrics()
     loop = asyncio.get_event_loop()
     client = aiohttp.ClientSession(loop=loop)
-
-    startdate = datetime.datetime(2019, 1, 30, 9, 4, 00) + datetime.timedelta(seconds=25200)
-    enddate = datetime.datetime(2019, 1, 30, 9, 4, 10) + datetime.timedelta(seconds=25200)
-
+    # ************************************************ EDIT THIS ******************************************
+    # YOU MUST SET YOUR DATE
+    startdate = datetime.datetime(2019, 1, 30, 8, 4, 00) + datetime.timedelta(seconds=25200)
+    enddate = datetime.datetime(2019, 1, 30, 8, 4, 10) + datetime.timedelta(seconds=25200)
+    # *****************************************************************************************************
     loop_start_date = startdate + datetime.timedelta(seconds=-1)
     loop_end_date = startdate
     method_list = ["ta", "tea", "pm", "ps"]

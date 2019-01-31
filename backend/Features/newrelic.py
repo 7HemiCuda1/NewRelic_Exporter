@@ -396,7 +396,8 @@ async def getAppTransactions(start_date, end_date, appname, type, log, thread_id
             except Exception as e:
                 logger.error("*" * 50)
                 logger.error("{} - CRITICAL ERROR - There was an Exception getting the number of "
-                      "members or just no members this is an async process. ".format(thread_id, str(e)))
+                             "members or just no members. Here is the Query Used {} \n"
+                             "and here is the exception {}".format(thread_id, querystring, str(e)))
                 return {}
 
             if number_of_memberids > 1000:
