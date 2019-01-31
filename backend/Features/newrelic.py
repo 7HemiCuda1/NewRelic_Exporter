@@ -20,27 +20,28 @@ async def newRelicRequest(querystring, client):
         logger.exception("Exception getting data from config file. ")
     try:
         async with client.get(url, params=querystring, headers=header) as response:
-            rlog.error("query string = " + querystring + "\nResponse = " + response.status
-                       + " And Reason = " + response.reason)
+            rlog.error("query string = " + str(querystring) + "\nResponse = " + str(response.status)
+                       + " And Reason = " + str(response.reason))
             if response.status != 200:
-                logger.debug("Try again, didnt get a 200 with this request. {} reason was {}".format(querystring, response.reason))
-                #await newRelicRequest(querystring, client)
+                logger.debug(
+                    "Try again, didnt get a 200 with this request. {} reason was {}".format(querystring,
+                                                                                            str(response.reason)))
                 return await response.text()
             else:
                 return await response.text()
     except AssertionError as e:
         logger.exception("Could not get data from New Relic. Response code was not 200. got code {} and reason "
-                         "{} with this exception {}".format(response.status, response.reason,  e))
+                         "{} with this exception {}".format(str(response.status), str(response.reason),  str(e)))
         res = "failure reason " + str(response.reason) + " status is " + str(response.status)
         rlog.exception("Could not get data from New Relic. Response code was not 200. got code {} and reason "
-                         "{} with this exception {}".format(response.status, response.reason,  e))
+                         "{} with this exception {}".format(str(response.status), str(response.reason),  str(e)))
         return res
     except Exception as ex:
         logger.exception("Could not get data from New Relic. Response code was not 200. got code {} and reason "
-                         "{} with this exception {}".format(response.status, response.reason,  ex))
+                         "{} with this exception {}".format(str(response.status), str(response.reason),  str(ex)))
         res = "failure reason " + str(response.reason) + " status is " + str(response.status)
         rlog.exception("Could not get data from New Relic. Response code was not 200. got code {} and reason "
-                         "{} with this exception {}".format(response.status, response.reason,  ex))
+                         "{} with this exception {}".format(str(response.status), str(response.reason),  str(ex)))
         return res
 
 
@@ -62,7 +63,7 @@ def getNumOfEventsFromData(data):
     return num_of_events
 
 
-async def get_number_rows_from_new_relic(nrqlQuery, query, thread_id, client):
+async def get_number_rows_from_new_relic(nrqlQuery, thread_id, client):
     querystring = {"nrql": nrqlQuery}
     return_value = 0
 
@@ -364,7 +365,7 @@ async def getAppTransactions(start_date, end_date, appname, type, log, thread_id
                                                            appname=appname,
                                                            where=w
                                                            )
-        num_of_rows = (await get_number_rows_from_new_relic(nrqlQueryRows, my_query, thread_id, client))
+        num_of_rows = (await get_number_rows_from_new_relic(nrqlQueryRows, thread_id, client))
         logger.debug("{} Number of rows = {} for this interval"
                      " {} to {}".format(thread_id, str(num_of_rows),loop_start_date, loop_end_date))
         # Check to see if there are too many rows. else that there are rows vs no rows.

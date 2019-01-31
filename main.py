@@ -108,8 +108,8 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     client = aiohttp.ClientSession(loop=loop)
 
-    startdate = datetime.datetime(2019, 1, 30, 9, 3, 00) + datetime.timedelta(seconds=25200)
-    enddate = datetime.datetime(2019, 1, 30, 9, 3, 10) + datetime.timedelta(seconds=25200)
+    startdate = datetime.datetime(2019, 1, 30, 9, 4, 00) + datetime.timedelta(seconds=25200)
+    enddate = datetime.datetime(2019, 1, 30, 9, 4, 10) + datetime.timedelta(seconds=25200)
 
     loop_start_date = startdate + datetime.timedelta(seconds=-1)
     loop_end_date = startdate
