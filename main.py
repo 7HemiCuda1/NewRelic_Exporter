@@ -67,21 +67,20 @@ if __name__ == "__main__":
         tasks.append(asyncio.ensure_future(newrelic.collectTransactionsForApps(startdate, enddate, log, thread_id, client)))
         # Transaction Errors
         rand_int = random.randint(1, 2000) * 5
-        thread_id = "t" + str(rand_int)
+        thread_id = "te" + str(rand_int)
         tasks.append(asyncio.ensure_future(newrelic.collectTransactionErrorsForApps(startdate, enddate, log, thread_id, client)))
-        # Process for Docker Microservices
+        # # Process for Docker Microservices
         rand_int = random.randint(1, 2000) * 5
-        thread_id = "t" + str(rand_int)
+        thread_id = "pm" + str(rand_int)
         tasks.append(asyncio.ensure_future(newrelic.collectProcessInfoForMicroservices(startdate, enddate, log, thread_id, client)))
-        # Process for Apps
+        # # Process for Apps
+        #     #rand_int = random.randint(1, 2000) * 5
+        #     #thread_id = "pa" + str(rand_int)
+        #     #tasks.append(asyncio.ensure_future(newrelic.collectProcessInfoForApps(startdate, enddate, log, thread_id, client)))
+        # # Host (infrastructure)
         rand_int = random.randint(1, 2000) * 5
-        thread_id = "t" + str(rand_int)
-        tasks.append(asyncio.ensure_future(
-            newrelic.collectProcessInfoForApps(startdate, enddate, log, thread_id, client)))
-        # Host (infrastructure)
-        rand_int = random.randint(1, 2000) * 5
-        thread_id = "t" + str(rand_int)
-        tasks.append(asyncio.ensure_future(newrelic.collectProcessInfoForApps(startdate, enddate, log, thread_id, client)))
+        thread_id = "ha" + str(rand_int)
+        tasks.append(asyncio.ensure_future(newrelic.collectHostInfoForApps(startdate, enddate, log, thread_id, client)))
 
         await asyncio.gather(*tasks)
 
@@ -95,7 +94,7 @@ if __name__ == "__main__":
     delays = [randrange(3, 7) for i in range(50)]
 
     # Instantiate a thread pool with 5 worker threads
-    pool = ThreadPool(100)
+    pool = ThreadPool(10)
 
     # Add the jobs in bulk to the thread pool. Alternatively you could use
     # `pool.add_task` to add single jobs. The code will block here, which
@@ -109,26 +108,22 @@ if __name__ == "__main__":
     client = aiohttp.ClientSession(loop=loop)
     # ************************************************ EDIT THIS ******************************************
     # YOU MUST SET YOUR DATE
-    startdate = datetime.datetime(2019, 1, 30, 8, 4, 00) + datetime.timedelta(seconds=25200)
-    enddate = datetime.datetime(2019, 1, 30, 8, 4, 10) + datetime.timedelta(seconds=25200)
+    startdate = datetime.datetime(2018, 11, 22, 23, 30, 00) + datetime.timedelta(seconds=25200)
+    enddate = datetime.datetime(2018, 11, 22, 23, 30, 1) + datetime.timedelta(seconds=25200)
     # *****************************************************************************************************
     loop_start_date = startdate + datetime.timedelta(seconds=-1)
     loop_end_date = startdate
     method_list = ["ta", "tea", "pm", "ps"]
     logger.info("Start app with the following times. {} tp {}".format(startdate, enddate))
 
-    while loop_start_date <= enddate:
-        loop_start_date = loop_end_date
-        loop_end_date = loop_start_date + datetime.timedelta(seconds=1)
 
-        logger.info("*" * 80)
-        logger.info("*" * 80)
+    # loop_start_date = loop_end_date
+    # loop_end_date = loop_start_date + datetime.timedelta(seconds=1)
 
-        logger.info("Initiate start interval {} to {} ".format(loop_start_date, loop_end_date))
-        pool.add_task(loop.run_until_complete(control(startdate, enddate, log, client)))
+    logger.info("Initiate start interval {} to {} ".format(loop_start_date, loop_end_date))
+    pool.add_task(loop.run_until_complete(control(startdate, enddate, log, client)))
 
-        logger.info("*" * 80)
-        logger.info("*" * 80)
+    logger.info("*" * 80)
 
     client.close()
     loop.close()

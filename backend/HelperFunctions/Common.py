@@ -77,7 +77,7 @@ class Common:
         screen_handler = logging.StreamHandler(stream=sys.stdout)
         screen_handler.setFormatter(formatter)
         logger = logging.getLogger(name)
-        logger.setLevel(logging.ERROR)
+        logger.setLevel(logging.INFO)
         logger.addHandler(handler)
         logger.addHandler(screen_handler)
 

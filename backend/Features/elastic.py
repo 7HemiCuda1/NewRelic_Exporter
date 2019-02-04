@@ -77,4 +77,5 @@ def process_transactions(events, index, type, log, thread_id):
                     "{} **** FATAL ****** Not Added to ES. \nNeed to look at the event to find a valid unique ID. "
                     "this is the error. {}".format(thread_id, str(ex)))
         cnt = cnt + 1
+    #print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ADDED {} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".format(len(events)))
 
